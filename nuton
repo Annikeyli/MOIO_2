@@ -1,0 +1,158 @@
+#include <iostream>
+#include <cmath>
+#include <iomanip>
+#include <locale.h>
+
+using namespace std;
+
+double f(double x1, double x2) {
+    return 4 * x1 * x1 + x2 * x2 - 8 * x2 + 4 * x1 + 5;
+}
+
+void grad(double x1, double x2, double& g1, double& g2) {
+    g1 = 8 * x1 + 4;
+    g2 = 2 * x2 - 8;
+}
+
+// матрица Гессе 
+void matr(double& h11, double& h12, double& h21, double& h22) {
+    h11 = 8;   
+    h12 = 0;   
+    h21 = 0;   
+    h22 = 2;   
+}
+
+// обратная матрица Гессе
+void inv_matr(double& inv_h11, double& inv_h12, double& inv_h21, double& inv_h22) {
+    double h11, h12, h21, h22;
+    matr(h11, h12, h21, h22);
+
+    double det = h11 * h22 - h12 * h21;
+
+    inv_h11 = h22 / det;
+    inv_h12 = -h12 / det;
+    inv_h21 = -h21 / det;
+    inv_h22 = h11 / det;
+}
+
+// проверка положительной определённости матрицы Гессе 
+bool positive(double h11, double h12, double h21, double h22) {
+    double det1 = h11;
+    double det2 = h11 * h22 - h12 * h21;
+
+    return (det1 > 0 && det2 > 0);
+}
+
+int main() {
+    setlocale(LC_ALL, "Russian");
+
+    // шаг 1
+    double x1 = 1.0, x2 = 1.0;
+    double eps1 = 0.1;
+    double eps2 = 0.15;
+    int M = 10;
+
+    cout << "Метод Ньютона\n";
+    cout << "f(x) = 4x1^2 + x2^2 - 8x2 + 4x1 + 5\n";
+    cout << "Начальная точка: (1, 1)\n";
+    cout << "e1 = " << eps1 << ", e2 = " << eps2 << ", M = " << M << "\n\n";
+
+    // шаг 2
+    int k = 0;
+    double fk = f(x1, x2);
+
+    cout << "k = " << k << "\n";
+
+    while (k <= M) {
+        // шаг 3 - вычисление градиента
+        double g1, g2;
+        grad(x1, x2, g1, g2);
+        double norm_g = sqrt(g1 * g1 + g2 * g2);
+
+        cout << "  gradf(x^" << k << ") = (" << g1 << ", " << g2 << ")\n";
+        cout << "  ||gradf|| = " << norm_g << "\n";
+
+        // шаг 4 - проверка по градиенту
+        if (norm_g < eps1) {
+            cout << "\n  ||gradf|| < e1 -> x* = (" << x1 << ", " << x2 << ")\n\n"; 
+            break;
+        }
+        else {
+            cout << "  ||gradf|| > e1 -> не выполенено\n\n";
+        }
+        
+        // шаг 5 - проверка по итерациям
+        if (k >= M) {
+            cout << "\n k >= M → x* = (" << x1 << ", " << x2 << ")\n\n";
+            break;
+        }
+
+        // шаг 6 - вычисление матрицы Гессе 
+        double h11, h12, h21, h22;
+        matr(h11, h12, h21, h22);
+
+        cout << "  H(x^" << k << ") = [[" << h11 << ", " << h12 << "], [" << h21 << ", " << h22 << "]]\n\n";
+
+        // шаг 7 - вычисление обратной матрицы Гессе 
+        double inv_h11, inv_h12, inv_h21, inv_h22;
+        inv_matr(inv_h11, inv_h12, inv_h21, inv_h22);
+
+        cout << "  H^{-1}(x^" << k << ") = [[" << inv_h11 << ", " << inv_h12 << "], [" << inv_h21 << ", " << inv_h22 << "]]\n\n";
+
+        // шаг 8 - проверка H^{-1} > 0 
+        bool is_positive = positive(inv_h11, inv_h12, inv_h21, inv_h22);
+
+        cout << "  H^{-1}(x^" << k << ") > 0: " << (is_positive ? "да" : "нет") << "\n";
+
+        double d1, d2;
+
+        if (is_positive) {
+            // шаг 9 - d^k = -H^{-1}gradf
+            d1 = -(inv_h11 * g1 + inv_h12 * g2);
+            d2 = -(inv_h21 * g1 + inv_h22 * g2);
+            cout << "  d^" << k << " = -H^{-1}gradf = (" << d1 << ", " << d2 << ")\n\n";
+        }
+        else {
+            // 8б = d^k = -gradf 
+            d1 = -g1;
+            d2 = -g2;
+            cout << "  d^" << k << " = -gradf = (" << d1 << ", " << d2 << ")\n";
+        }
+
+        // шаг 10 x^{k+1} = x^k + t_k * d^k 
+        // t_k = 1
+        double t = 1.0;
+
+        double x_next1 = x1 + t * d1;
+        double x_next2 = x2 + t * d2;
+        double f_next = f(x_next1, x_next2);
+
+        cout << "  t = " << t << "\n";
+        cout << "  x^{" << k + 1 << "} = (" << x_next1 << ", " << x_next2 << "), f = " << f_next << ", f0 = " << fk << "\n\n";
+
+        // шаг 11 - проверка условий окончания 
+        double dx = sqrt((x_next1 - x1) * (x_next1 - x1) + (x_next2 - x2) * (x_next2 - x2));
+        double df = fabs(f_next - fk);
+        
+        cout << "  ||x^{" << k + 1 << "} - x^{" << k << "}|| = " << dx << "\n";
+        cout << "  |f^{" << k + 1 << "} - f^{" << k << "}| = " << df << "\n";
+                
+        if (dx < eps2 && df < eps2) {
+            cout << "\n Условия выполнены\n";
+            cout << "Ответ: x* = (" << x_next1 << ", " << x_next2 << ")\n";
+        }
+        else {
+            cout << "\n  ||delta x|| > e2 и |delta f| > e2 -> не выполнено -> k = k+1\n";            
+        }
+
+        // обновление значений
+        x1 = x_next1;
+        x2 = x_next2;
+        fk = f_next;
+        k++;
+
+        cout << "\nk = " << k << "\n";
+    }
+
+    return 0;
+}
