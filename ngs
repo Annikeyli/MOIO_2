@@ -1,0 +1,110 @@
+#include <iostream>
+#include <cmath>
+#include <iomanip>
+#include <locale.h>
+
+using namespace std;
+
+double f(double x1, double x2) {
+    return 4 * x1 * x1 + x2 * x2 - 8 * x2 + 4 * x1 + 5;
+}
+
+void grad(double x1, double x2, double& g1, double& g2) {
+    g1 = 8 * x1 + 4;
+    g2 = 2 * x2 - 8;
+}
+
+// Вычисление шага t* аналитически для f(x - t*grad)
+double calc_t(double x1, double x2, double g1, double g2) {
+    // f(x - t*g) = 4(x1 - t*g1)^2 + (x2 - t*g2)^2 - 8(x2 - t*g2) + 4(x1 - t*g1) + 5
+    // Раскрываем: A*t^2 + B*t + C
+    double A = 4 * g1 * g1 + g2 * g2;
+    double B = -8 * x1 * g1 - 2 * x2 * g2 + 8 * g2 - 4 * g1;
+    return -B / (2 * A);
+}
+
+int main() {
+    setlocale(LC_ALL, "Russian");
+
+    // Настройка вывода (как на фото: до 2-3 знаков)
+    cout << fixed << setprecision(2);
+    
+    // шаг 1
+    double x_1 = 1.0, x_2 = 1.0;
+    double eps1 = 0.1;   
+    double eps2 = 0.15;  
+    int M = 10;
+
+    cout << "Метод наискорейшего градиентного спуска\n";
+    cout << "f(x) = 4x1^2 + x2^2 - 8x2 + 4x1 + 5\n";
+    cout << "x0 = (1, 1)\n";
+    cout << "e1 = 0.1, e2 = 0.15, M = 10\n\n";
+
+    int k = 0;
+    double fk = f(x_1, x_2);
+
+    cout << "\n--- k = " << k << " ---\n";
+    cout << "x = (" << x_1 << ", " << x_2 << "), f = " << fk << "\n\n";
+
+    while (k <= M) {
+        // шаг 3
+        double g1, g2;
+        grad(x_1, x_2, g1, g2);
+        double norm_g = sqrt(g1 * g1 + g2 * g2);
+
+        cout << "  gradf(x^" << k << ") = (" << g1 << ", " << g2 << ")\n";
+        cout << "  ||gradf|| = " << norm_g << "\n";
+
+        // шаг 4 - проверка по градиенту
+        if (norm_g < eps1) {
+            cout << "\n||gradf|| < e1 -> x* = (" << x_1 << ", " << x_2 << ")\n\n";
+            break;
+        }
+        else {
+            cout << "  ||gradf|| > e1 -> не выполнено\n\n";
+        }
+
+        // шаг 5 - проверка итераций
+        if (k >= M) {
+            cout << "\nk >= M -> x* = (" << x_1 << ", " << x_2 << ")\n\n";
+            break;
+        }
+
+        // шаг 6 - вычисление t*
+        double t = calc_t(x_1, x_2, g1, g2);
+        cout << "  t* = " << t << "\n\n";
+
+        // шаг 7 - x^{k+1} = x^k - t*gradf
+        double x_next_1 = x_1 - t * g1; // должно получиться -0.8 и 1.9 ровно, но онпочему то берёт сотые, из-за этого итераций 4, а не 5
+        double x_next_2 = x_2 - t * g2;
+        double f_next = f(x_next_1, x_next_2);
+
+        cout << "  x^{" << k + 1 << "} = (" << x_next_1 << ", " << x_next_2 << "), f = " << f_next << "\n\n";
+
+        // шаг 8 - проверка условий окончания
+        double dx = sqrt((x_next_1 - x_1) * (x_next_1 - x_1) + (x_next_2 - x_2) * (x_next_2 - x_2));
+        double df = fabs(f_next - fk);
+
+        cout << "  ||x^{" << k + 1 << "} - x^{" << k << "}|| = " << dx << "\n";
+        cout << "  |f^{" << k + 1 << "} - f^{" << k << "}| = " << df << "\n";
+
+        if (dx < eps2 && df < eps2) {
+            cout << "\n ||delta x|| < e2 и |delta f| < e2 -> выполненo -> x* = (" << x_next_1 << ", " << x_next_2 << ")\n";
+            break;
+        }
+        else {
+            cout << "  Условие не выполнено -> k = k+1\n";
+        }
+    
+        // обновление значений
+        x_1 = x_next_1;
+        x_2 = x_next_2;
+        fk = f_next;
+        k++;
+
+        cout << "\n--- k = " << k << " ---\n";
+        cout << "x = (" << x_1 << ", " << x_2 << "), f = " << fk << "\n\n";
+    }
+
+    return 0;
+}
