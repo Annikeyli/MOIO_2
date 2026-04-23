@@ -26,7 +26,7 @@ double calc_t(double x1, double x2, double g1, double g2) {
 int main() {
     setlocale(LC_ALL, "Russian");
 
-    // Настройка вывода (как на фото: до 2-3 знаков)
+    // настройка вывода до 2 знаков
     cout << fixed << setprecision(2);
     
     // шаг 1
