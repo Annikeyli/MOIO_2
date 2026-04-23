@@ -1,0 +1,132 @@
+#include <iostream>
+#include <cmath>
+#include <locale.h>
+
+using namespace std;
+
+double f(double x1, double x2) {
+    return 4 * x1 * x1 + x2 * x2 - 8 * x2 + 4 * x1 + 5;
+}
+
+
+// Ищем t, минимизирующий f(p + t*d)
+double analytic_step(double p1, double p2, double d1, double d2) {
+    // f(p + t*d) = 4(p1+t*d1)^2 + (p2+t*d2)^2 - 8(p2+t*d2) + 4(p1+t*d1) + 5
+    // Раскрываем: a*t^2 + b*t + const
+    double a = 4 * d1 * d1 + d2 * d2;
+    double b = 8 * p1 * d1 + 2 * p2 * d2 - 8 * d2 + 4 * d1;
+    return -b / (2 * a);  // минимум
+}
+
+// проверка линейной независимости двух векторов (rang = n)
+bool rang(double d1_x, double d1_y, double d2_x, double d2_y) {
+    double det = d1_x * d2_y - d1_y * d2_x;
+    return fabs(det) > 1e-10;
+}
+
+int main() {
+    setlocale(LC_ALL, "Russian");
+    // шаг 1
+    double x0_1 = 1, x0_2 = 1;
+    double eps = 0.1;
+    int n = 2;
+
+    double d1_x = 1, d1_y = 0; // d1
+    double d2_x = 0, d2_y = 1; // d2
+    double d0_x = d2_x, d0_y = d2_y; // d0 = d2
+
+    double y0_x = x0_1, y0_y = x0_2; // y^0 = x^0
+    double xk_x = x0_1, xk_y = x0_2; // x^k
+    int k = 0;
+    
+    cout << "Функция: f(x) = 4x1^2 + x2^2 - 8x2 + 4x1 + 5\n";
+    cout << "Начальная точка: (1, 1)\n";
+    cout << "Точность e = " << eps << "\n\n";
+
+    while (true) {
+        cout << "Итерация k = " << k << endl;
+
+        double y_start_x = y0_x, y_start_y = y0_y; // запоминаем y^0
+        double y1_x, y1_y; // для y^1
+        double y2_x, y2_y; // для y^2
+        double y3_x, y3_y; // для y^3
+
+        // шаг 2 и 3: проход по направлениям
+        int i = 0; // i = 0: поиск по d0
+
+        double t0 = analytic_step(y0_x, y0_y, d0_x, d0_y);
+        y1_x = y0_x + t0 * d0_x;
+        y1_y = y0_y + t0 * d0_y;
+        cout << "  i=0, d0=(" << d0_x << "," << d0_y << "), t0=" << t0 << " -> y1=(" << y1_x << "," << y1_y << ")\n" << endl;
+
+        i = 1; // i = 1: поиск по d1
+
+        double t1 = analytic_step(y1_x, y1_y, d1_x, d1_y);
+        y2_x = y1_x + t1 * d1_x;
+        y2_y = y1_y + t1 * d1_y;
+        cout << "  i=1, d1=(" << d1_x << "," << d1_y << "), t1=" << t1 << " -> y2=(" << y2_x << "," << y2_y << ")" << endl;
+
+        // шаг 3: i = n-1 = 1, проверяем y^n == y^0 
+        cout << "  Проверка y^n == y^0:" << endl;
+
+        if (y2_x == y_start_x && y2_y == y_start_y) {
+            cout << "  y^n == y^0 -> минимум в y^n\n\n";
+            cout << "Ответ: x* = (" << y2_x << ", " << y2_y << ")\n";
+            break;
+        }
+
+        // i = n: делаем ещё один шаг по d2 
+        cout << "  y^n != y^0, делаем дополнительный шаг i=n по d2\n" << endl;
+        i = n;
+        double t2 = analytic_step(y2_x, y2_y, d0_x, d0_y);
+        y3_x = y2_x + t2 * d0_x;
+        y3_y = y2_y + t2 * d0_y;
+        cout << "  i=2, d2=(" << d0_x << "," << d0_y << "), t2=" << t2 << " -> y3=(" << y3_x << "," << y3_y << ")" << endl;
+
+        // шаг 4
+        double x_next_x = y3_x, x_next_y = y3_y; // x^{k+1} = y^{n+1}
+        double norm_x = sqrt((x_next_x - xk_x) * (x_next_x - xk_x) + (x_next_y - xk_y) * (x_next_y - xk_y));
+        cout << "  ||x^{k+1} - x^k|| = " << norm_x << endl;
+
+        if (norm_x < eps) {
+            cout << "\nУсловие выполнено\n";
+            cout << " x* = (" << x_next_x << ", " << x_next_y << ")\n";
+        }
+        else {
+            cout << "  ||delta x|| > e -> не выполнено\n";
+        }
+
+        // cтроим новое направление
+        double d_new_x = y3_x - y1_x;
+        double d_new_y = y3_y - y1_y;
+        cout << "  Новое направление d_new = y3 - y1 = (" << d_new_x << "," << d_new_y << ")" << endl;
+
+        // исключаем d1, добавляем d_new
+        double old_d1_x = d1_x, old_d1_y = d1_y;
+        double old_d2_x = d2_x, old_d2_y = d2_y;
+
+        d1_x = old_d2_x; d1_y = old_d2_y; // d1 = старый d2
+        d2_x = d_new_x; d2_y = d_new_y; // d2 = d_new
+        d0_x = d2_x; d0_y = d2_y; // d0 = d2
+
+        // проверяем rang
+        if (rang(d1_x, d1_y, d2_x, d2_y)) {
+            cout << "  rang(d1,d2) = 2 -> система линейно независима, оставляем" << endl;
+        }
+        else {
+            cout << "  rang(d1,d2) < 2 -> система зависима, возвращаем старые" << endl;
+            d1_x = old_d1_x; d1_y = old_d1_y;
+            d2_x = old_d2_x; d2_y = old_d2_y;
+            d0_x = d2_x;     d0_y = d2_y;
+        }
+
+        // обновление значений
+        xk_x = x_next_x; xk_y = x_next_y;
+        y0_x = x_next_x; y0_y = x_next_y;
+        k++;
+
+        cout << endl;
+    }
+
+    return 0;
+}
